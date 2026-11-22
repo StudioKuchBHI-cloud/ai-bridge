@@ -1,0 +1,10 @@
+{
+  "name": "ai-bridge-companion",
+  "version": "1.2.2",
+  "description": "A local program that lets an AI tool read and edit one section of a FigJam board through the AI Canvas plugin",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "scripts": { "build": "node build.js", "test": "node ../tests/companion.test.js && node ../tests/companion2.test.js" },
+  "dependencies": { "esbuild": "^0.28.2", "postject": "^1.0.0-alpha.6", "ws": "^8.23.0" }
+}
