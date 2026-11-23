@@ -1,6 +1,6 @@
 # AI Bridge companion
 
-A small program that runs on your own computer. It lets an AI tool (Claude Code, Codex, or the Claude and Codex desktop apps) read and edit **one section** of a FigJam board, through the **AI Canvas** plugin.
+A small program that runs on your own computer. It lets an AI tool (Claude Code, Codex, or the Claude and Codex desktop apps) look at, review and (in sections you allow) change parts of a FigJam board, through the **AI Canvas** plugin.
 
 > **Be aware before you run it.** This is early software written quickly by one person. It has been tested against simulated plugins and on one real board over a few sessions. It has **not** been security-audited, the Windows program is **not code-signed**, and the macOS version has **not been built or tried**. Read the "What can go wrong" section first.
 
@@ -10,7 +10,7 @@ AI tool  ->  ai-bridge program (on your computer, 127.0.0.1)  ->  AI Canvas plug
 ```
 - One program (`ai-bridge.exe`, about 82 MB because it carries its own copy of Node.js, so you do not need Node installed). It is the installer, the local server, and the command-line client an AI tool calls.
 - The plugin (AI Canvas, listing pending) connects to it from inside Figma. The program listens only on `127.0.0.1`, on the first free port from 3055 to 3058.
-- The AI can only work inside the section you choose in the plugin (or, if you switch it on, sections it creates itself). The plugin enforces that rule.
+- The AI can only use the sections you share in the plugin. Each is read only (the AI may look at it and review it) until you switch it to Edit. If you switch it on, the AI may also create sections of its own. The plugin enforces these rules.
 
 ## What it does not do
 - No account, no telemetry, no analytics, no update checks, no calls to any server on the internet. The program only talks to your own computer.
@@ -21,7 +21,7 @@ AI tool  ->  ai-bridge program (on your computer, 127.0.0.1)  ->  AI Canvas plug
 1. Download `AI-Bridge-Setup.exe` from the latest release. Compare its SHA-256 with the value in the release notes (`certutil -hashfile AI-Bridge-Setup.exe SHA256`).
 2. Windows will probably say "Windows protected your PC" because the file is unsigned. That is true: choose **More info, then Run anyway** only if you are comfortable with that. If you are not, build it yourself (below).
 3. It copies itself to `%LOCALAPPDATA%\AIBridge`, writes `bridge.json` (a random token and the port), `instructions.md` (what an AI tool reads), adds a Start menu entry "AI Bridge", and starts. If it finds the Claude or Codex desktop app it asks whether to add AI Bridge to that app's configuration (it saves a `.bak-aibridge` copy first).
-4. In FigJam open the AI Canvas plugin, turn on AI mode, choose a section. The plugin finds the program by itself.
+4. In FigJam open the AI Canvas plugin, turn on AI mode, add the sections you want to share. The plugin finds the program by itself. The **Copy context for AI** button gives you the text to paste into your AI chat.
 
 Uninstall: run `%LOCALAPPDATA%\AIBridge\ai-bridge.exe uninstall`, then delete the `AIBridge` folder. Remove the entry it added to the Claude or Codex configuration if you accepted it.
 
@@ -35,7 +35,7 @@ Uninstall: run `%LOCALAPPDATA%\AIBridge\ai-bridge.exe uninstall`, then delete th
 
 ## What can go wrong (known limits, not fixed)
 - **Your AI tool sees what it reads.** Whatever the AI reads from your chosen section goes to whichever AI service that tool uses. This program does not control that. Choose the section deliberately.
-- **The section rule is enforced by the plugin, not by this program.** The program forwards operations; the plugin refuses anything outside the section. A modified or fake plugin would not.
+- **The section rule is enforced by the plugin, not by this program.** The program forwards operations; the plugin refuses anything outside the sections you shared, and any change in a read only section. A modified or fake plugin would not.
 - **A web page could pose as a board.** A page inside a sandboxed frame sends the same origin value ("null") as a Figma plugin window, so it could connect as a fake board. It could receive what the AI sends and answer with fake results. It cannot read your real board. Figma gives plugins no secret to prove who they are, so this cannot be closed from this side.
 - **Any program running as your Windows user can read the token** in `bridge.json`, and therefore drive the program. This is the normal limit of a per-user tool.
 - **Two Windows users on one computer** share ports 3055 to 3058. The programs recognise their own copy by an id derived from the token and move to the next port, but the plugin cannot tell which user's copy it reached.

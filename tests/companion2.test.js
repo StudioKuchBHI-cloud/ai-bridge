@@ -83,7 +83,7 @@ let n = 0; const step = (s) => { n++; console.log('  ok  ' + s); };
   const legacyExited = new Promise(res => legacy.on('exit', () => res(true)));
   r = await sh(EXE, []); assert(r.code === 0 && /AI Bridge is running/.test(r.out), 'upgrade over a legacy companion: ' + r.out);
   assert(await Promise.race([legacyExited, sleep(3000).then(() => false)]), 'the old companion was stopped'); assert(reg().token === old.token, 'token kept');
-  assert(/"version": "1.2.2"/.test((await sh(INST, ['status'])).out)); step('upgrade: an older companion (no instance id) is recognised by its registered port, stopped and replaced; token kept');
+  assert(/"version": "1.3.0"/.test((await sh(INST, ['status'])).out)); step('upgrade: an older companion (no instance id) is recognised by its registered port, stopped and replaced; token kept');
 
   // ----- connect helper (fake profile folder)
   r = await sh(INST, ['connect', 'status']); assert(/claude-desktop: not found/.test(r.out) && /codex: not found/.test(r.out)); step('connect status: apps that are not installed are reported as not found');

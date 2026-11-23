@@ -1,6 +1,6 @@
 {
   "name": "ai-bridge-companion",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "A local program that lets an AI tool read and edit one section of a FigJam board through the AI Canvas plugin",
   "private": true,
   "license": "UNLICENSED",

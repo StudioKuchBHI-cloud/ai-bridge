@@ -11,7 +11,7 @@ const http = require('http');
 const cp = require('child_process');
 const crypto = require('crypto');
 
-const VERSION = '1.2.2';
+const VERSION = '1.3.0';
 const PROTOCOL = 2;
 const PORTS = process.env.AIBRIDGE_PORTS ? process.env.AIBRIDGE_PORTS.split(',').map(Number).filter(Boolean) : [3055, 3056, 3057, 3058];
 const WIN = process.platform === 'win32';
@@ -119,12 +119,13 @@ If AI Bridge appears to you as tools (\`bridge_instructions\`, \`bridge_status\`
 | \`connect [claude-desktop|codex|all|status]\` | Add AI Bridge to a desktop app so it appears as tools there |
 
 ## 4. Operations (\`ops.json\` holds an array of \`{"op": "...", ...}\`)
-Every op works only inside the workspace section the user chose, and inside sections you create yourself when the user has switched on "Let the AI create sections". \`parent\` is optional and defaults to the workspace. Coordinates are relative to the workspace. Colours are hex strings. Keep batches to about 50 ops and check the results before sending more.
+The user lists sections for you. A section marked READ you may look at and review (\`context\`, \`read\`, \`find\`, \`tableread\`, \`export\`) but never change. A section marked EDIT, the workspace and sections you create yourself (when the user has switched on "Let the AI create sections") you may also change. Anything else on the board is out of reach. If a change is refused as read only, tell the user which section and ask them to switch it to EDIT in the plugin window; do not try to work around it. \`parent\` is optional and defaults to the workspace. Coordinates are relative to the workspace. Colours are hex strings. Keep batches to about 50 ops and check the results before sending more.
 
 ### Read and find
 | op | Fields | Notes |
 |---|---|---|
-| \`identity\` | none | board name, page, workspace, whether you may create sections, sections you made, top-level section names |
+| \`context\` | \`id\` (optional), \`limit\` | start here. Every section the user listed, each with the user's description, its mode (read or edit) and an outline of what is inside. Use the descriptions to know what each section is for and what the user wants done with it |
+| \`identity\` | none | board name, page, workspace, \`listed\` (the sections above with descriptions and modes), whether you may create sections, sections you made, top-level section names |
 | \`read\` | \`parent\` | children of the workspace or of a node inside it |
 | \`find\` | \`query\`, \`type\`, \`parent\`, \`limit\` | case-insensitive search of names and text (stickies, shapes, text, code, table cells). \`type\` is for example STICKY, SHAPE_WITH_TEXT, TEXT, TABLE, CODE_BLOCK. Use this instead of reading everything |
 | \`selection\` | none | what the user has selected |
@@ -156,6 +157,17 @@ Every op works only inside the workspace section the user chose, and inside sect
 | \`code\` | \`code\`, \`language\`, \`name\`, \`x\`, \`y\` | a code block |
 | \`image\` | \`base64\`, \`w\`, \`h\`, \`name\`, \`x\`, \`y\` | PNG or JPG |
 | \`linkcard\` | \`url\`, \`text\`, \`w\`, \`h\` | clickable hyperlink box |
+
+### Vector drawing (only when the plugin open on the board is AI Canvas; \`bridge_status\` shows \`pp\` among its capabilities)
+These draw real vectors, the same kind a person draws with the pen and shapes in AI Canvas, and a person can keep editing them with the Anchors and Pen tools. They work only in sections the user set to EDIT, the workspace, and sections you made. A READ section can be read with \`pp.read\` but not drawn in. Coordinates are relative to the section.
+| op | Fields | Notes |
+|---|---|---|
+| \`pp.shape\` | \`kind\` (rectangle, ellipse, triangle, diamond, line), \`w\`, \`h\`, \`x\`, \`y\`, \`radius\` (rectangle corners), plus the style fields below | a shape by position and size. For a line, \`w\` and \`h\` are the run and the rise |
+| \`pp.path\` | \`points\` (\`[{x, y, in: {x, y}, out: {x, y}, radius}]\`; \`in\` and \`out\` are absolute curve handles, \`radius\` rounds a corner) or \`paths\` (several \`{points, closed}\`), \`closed\`, \`x\`, \`y\`, \`name\`, plus the style fields below | a free path with corners and curves. Points are shifted so the drawing starts at 0,0 and \`x\`, \`y\` place it. At most 20 paths and 500 points per path |
+| \`pp.path\` with \`id\` | \`id\` plus any fields to change | updates a vector you may change: send \`points\` or \`paths\` to replace the shape, or only style fields to restyle it. Position is kept unless you send \`x\`, \`y\` |
+| \`pp.restyle\` | \`ids\` plus the style fields | restyles several shapes at once |
+| \`pp.read\` | \`id\` or \`parent\`, \`limit\` | the saved drawing (points, handles, style) of one vector, or of every vector in a section, including hand drawings you may not change |
+Style fields: \`stroke\` (hex), \`width\` (1 to 100), \`style\` (solid, dashed, dotted), \`dash\`, \`gap\`, \`fill\` (hex, or \`"none"\`), \`fillOpacity\` (0 to 100), \`strokeOpacity\` (0 to 100). Anything you leave out keeps its value (new shapes start as a 4 px solid blue line with no fill).
 
 ### Change and arrange
 | op | Fields | Notes |
