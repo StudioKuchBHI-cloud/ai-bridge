@@ -11,7 +11,7 @@ const http = require('http');
 const cp = require('child_process');
 const crypto = require('crypto');
 
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 const PROTOCOL = 2;
 const PORTS = process.env.AIBRIDGE_PORTS ? process.env.AIBRIDGE_PORTS.split(',').map(Number).filter(Boolean) : [3055, 3056, 3057, 3058];
 const WIN = process.platform === 'win32';
@@ -124,10 +124,10 @@ The user lists sections for you. A section marked READ you may look at and revie
 ### Read and find
 | op | Fields | Notes |
 |---|---|---|
-| \`context\` | \`id\` (optional), \`limit\` | start here. Every section the user listed, each with the user's description, its mode (read or edit) and an outline of what is inside. Use the descriptions to know what each section is for and what the user wants done with it |
+| \`context\` | \`id\` (optional), \`limit\`, \`maxText\` | start here. Every section the user listed, each with the user's description, its mode (read or edit) and an outline of what is inside. Use the descriptions to know what each section is for and what the user wants done with it. Item text is shortened to 160 characters; an item with \`cut: true\` was shortened (\`fullLength\` says how long it is). To read it whole, call again with \`maxText\` up to 5000 (and \`id\` to keep the answer small) |
 | \`identity\` | none | board name, page, workspace, \`listed\` (the sections above with descriptions and modes), whether you may create sections, sections you made, top-level section names |
 | \`read\` | \`parent\` | children of the workspace or of a node inside it |
-| \`find\` | \`query\`, \`type\`, \`parent\`, \`limit\` | case-insensitive search of names and text (stickies, shapes, text, code, table cells). \`type\` is for example STICKY, SHAPE_WITH_TEXT, TEXT, TABLE, CODE_BLOCK. Use this instead of reading everything |
+| \`find\` | \`query\`, \`type\`, \`parent\`, \`limit\`, \`maxText\` | case-insensitive search of names and text (stickies, shapes, text, code, table cells). \`type\` is for example STICKY, SHAPE_WITH_TEXT, TEXT, TABLE, CODE_BLOCK. Use this instead of reading everything. Text is shortened to 120 characters (\`cut: true\`); pass \`maxText\` up to 5000 for the whole text |
 | \`selection\` | none | what the user has selected |
 | \`export\` | \`id\` (default workspace), \`scale\` (0.1 to 4), \`format\` PNG, JPG or SVG | a picture of the node. The client saves it under the AIBridge folder in \`exports\` and returns the file path in \`file\`. Look at that file to see the board |
 | \`freespace\` | \`w\`, \`h\`, \`gap\`, \`where\` (below or right) | an empty spot inside the workspace; says if it fits and what size the workspace needs |
