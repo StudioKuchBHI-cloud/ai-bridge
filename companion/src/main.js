@@ -11,7 +11,7 @@ const http = require('http');
 const cp = require('child_process');
 const crypto = require('crypto');
 
-const VERSION = '1.3.1';
+const VERSION = '1.4.1';
 const PROTOCOL = 2;
 const PORTS = process.env.AIBRIDGE_PORTS ? process.env.AIBRIDGE_PORTS.split(',').map(Number).filter(Boolean) : [3055, 3056, 3057, 3058];
 const WIN = process.platform === 'win32';
@@ -67,6 +67,10 @@ async function findRunning() {
   }
   return null;
 }
+
+// ---------- monitor (status widget, tray icon, restart) ----------
+const monitor = require('./monitor');
+const monCtx = () => ({ HOME, PORTS, VERSION, INSTALLED_EXE, NO_SYSTEM, readReg, findRunning, health, request, sleep, out, autostartGet, autostartSet });
 
 // ---------- autostart ----------
 const RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
@@ -125,6 +129,7 @@ The user lists sections for you. A section marked READ you may look at and revie
 | op | Fields | Notes |
 |---|---|---|
 | \`context\` | \`id\` (optional), \`limit\`, \`maxText\` | start here. Every section the user listed, each with the user's description, its mode (read or edit) and an outline of what is inside. Use the descriptions to know what each section is for and what the user wants done with it. Item text is shortened to 160 characters; an item with \`cut: true\` was shortened (\`fullLength\` says how long it is). To read it whole, call again with \`maxText\` up to 5000 (and \`id\` to keep the answer small) |
+| \`feedback\` | \`id\` (optional), \`maxText\`, \`reach\` | the notes the user left as stickies, each with the item it belongs to. Read only, works in READ and EDIT sections. \`kind\`: problem (red or orange), approved (green), note (other colours). \`how\`: connector (joined by a line), on top (sits on the item), beside (a coloured note near the item, within \`reach\`, default 250). Plain stickies that point at nothing are only counted in \`content\`. Use it when the user says they left feedback or asks you to check their notes: compare what you made with each note and with the section description (what it is used for), say what you would change, and change only EDIT sections after a yes. Notes are cut at 400 characters (\`cut: true\`); raise \`maxText\` for more |
 | \`identity\` | none | board name, page, workspace, \`listed\` (the sections above with descriptions and modes), whether you may create sections, sections you made, top-level section names |
 | \`read\` | \`parent\` | children of the workspace or of a node inside it |
 | \`find\` | \`query\`, \`type\`, \`parent\`, \`limit\`, \`maxText\` | case-insensitive search of names and text (stickies, shapes, text, code, table cells). \`type\` is for example STICKY, SHAPE_WITH_TEXT, TEXT, TABLE, CODE_BLOCK. Use this instead of reading everything. Text is shortened to 120 characters (\`cut: true\`); pass \`maxText\` up to 5000 for the whole text |
@@ -305,6 +310,7 @@ async function serve(argv) {
   setInterval(() => { wss.clients.forEach(ws => { if (!ws.isAlive) return ws.terminate(); ws.isAlive = false; try { ws.ping(); } catch (e) {} }); }, 20000).unref();
 
   // Pick a port. If one answers as AI Bridge we are a duplicate; if another program holds it, move on.
+  for (let attempt = 0; attempt < 2; attempt++) {
   for (const port of PORTS) {
     const existing = await health(port);
     if (existing && existing.iid === iidOf(TOKEN)) { out('AI Bridge is already running on port ' + port); return; }
@@ -321,7 +327,14 @@ async function serve(argv) {
       return; // keep process alive via the server
     }
   }
-  const msg = 'Ports ' + PORTS.join(', ') + ' are all in use by other programs. Close one of them and start AI Bridge again.';
+  if (attempt === 0) { // every port looks taken: clear old AI Bridge copies that no longer answer, then try once more
+    let cleared = []; try { cleared = await monitor.clearStale(monCtx()); } catch (e) {}
+    if (cleared.length) { out('Cleared ' + cleared.length + ' old AI Bridge copy(ies) that no longer answered.'); continue; }
+  }
+  break;
+  }
+  let holders = []; try { holders = await monitor.whoHolds(monCtx()); } catch (e) {}
+  const msg = 'Ports ' + PORTS.join(', ') + ' are all in use' + (holders.length ? ': ' + holders.join(', ') : ' by other programs') + '. Close the program holding one of them, or open the AI Bridge monitor and press Restart.';
   try { fs.mkdirSync(HOME, { recursive: true }); fs.writeFileSync(path.join(HOME, 'last-error.txt'), msg); } catch (e) {}
   out(msg); process.exit(2);
 }
@@ -562,6 +575,9 @@ async function install() {
       const ps = "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('" + path.join(lnkDir, 'AI Bridge.lnk').replace(/'/g, "''") + "');$s.TargetPath='" + INSTALLED_EXE.replace(/'/g, "''") + "';$s.Arguments='serve --background';$s.WindowStyle=7;$s.Description='Start AI Bridge';$s.Save()";
       cp.execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], { stdio: 'ignore' });
       out('Added Start menu entry: AI Bridge');
+      const ps2 = ps.replace('AI Bridge.lnk', 'AI Bridge Monitor.lnk').replace("serve --background", "monitor").replace('$s.WindowStyle=7;', '').replace('Start AI Bridge', 'Shows whether AI Bridge is working');
+      cp.execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps2], { stdio: 'ignore' });
+      out('Added Start menu entry: AI Bridge Monitor (status, restart, usage)');
     } catch (e) { out('Could not add a Start menu entry (not required).'); }
   }
   out('Starting AI Bridge...');
@@ -590,8 +606,10 @@ async function install() {
 async function uninstall() {
   const run = await findRunning(); if (run) { await request(run.port, 'POST', '/shutdown', {}, (run.reg || {}).token); await sleep(800); }
   try { autostartSet(false); } catch (e) {}
+  try { monitor.monitorAutostartSet(monCtx(), false); } catch (e) {}
+  if (WIN && !NO_SYSTEM) { for (const d of [path.join(process.env.USERPROFILE || '', 'Desktop'), path.join(process.env.APPDATA || '', 'Microsoft', 'Windows', 'Start Menu', 'Programs')]) { try { fs.unlinkSync(path.join(d, 'AI Bridge Monitor.lnk')); } catch (e) {} } }
   if (WIN && !NO_SYSTEM) { try { fs.unlinkSync(path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'AI Bridge.lnk')); } catch (e) {} }
-  for (const f of ['bridge.json', 'instructions.md', 'last-error.txt', 'autostart.flag']) { try { fs.unlinkSync(path.join(HOME, f)); } catch (e) {} }
+  for (const f of ['bridge.json', 'instructions.md', 'last-error.txt', 'autostart.flag', 'monitor.json', 'monitor-autostart.flag', 'tray.ps1']) { try { fs.unlinkSync(path.join(HOME, f)); } catch (e) {} }
   out('Removed registration, instructions and shortcuts. Delete the folder ' + HOME + ' to remove the program file itself.');
 }
 
@@ -611,8 +629,10 @@ async function uninstall() {
     else if (cmd === 'autostart') await cmdAutostart(a);
     else if (cmd === 'uninstall') await uninstall();
     else if (cmd === 'mcp') await mcpServe();
+    else if (cmd === 'monitor') await monitor.runMonitor(monCtx(), argv);
+    else if (cmd === 'restart') { const r = await monitor.restart(monCtx(), { everything: !!a.all }); out(JSON.stringify(r)); process.exit(r.ok ? 0 : 2); }
     else if (cmd === 'connect') await cmdConnect(a);
     else if (cmd === 'version') out(VERSION);
-    else { out('AI Bridge ' + VERSION + '\ncommands: status, boards, verify, send, autostart, connect, mcp, stop, serve, install, uninstall'); }
+    else { out('AI Bridge ' + VERSION + '\ncommands: status, boards, verify, send, autostart, connect, mcp, stop, restart, monitor, serve, install, uninstall'); }
   } catch (e) { out('error: ' + (e && e.message || e)); process.exit(1); }
 })();

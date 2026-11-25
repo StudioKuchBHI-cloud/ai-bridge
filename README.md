@@ -20,18 +20,21 @@ AI tool  ->  ai-bridge program (on your computer, 127.0.0.1)  ->  AI Canvas plug
 ## Install (Windows)
 1. Download `AI-Bridge-Setup.exe` from the latest release. Compare its SHA-256 with the value in the release notes (`certutil -hashfile AI-Bridge-Setup.exe SHA256`).
 2. Windows will probably say "Windows protected your PC" because the file is unsigned. That is true: choose **More info, then Run anyway** only if you are comfortable with that. If you are not, build it yourself (below).
-3. It copies itself to `%LOCALAPPDATA%\AIBridge`, writes `bridge.json` (a random token and the port), `instructions.md` (what an AI tool reads), adds a Start menu entry "AI Bridge", and starts. If it finds the Claude or Codex desktop app it asks whether to add AI Bridge to that app's configuration (it saves a `.bak-aibridge` copy first).
+3. It copies itself to `%LOCALAPPDATA%\AIBridge`, writes `bridge.json` (a random token and the port), `instructions.md` (what an AI tool reads), adds Start menu entries "AI Bridge" and "AI Bridge Monitor", and starts. If it finds the Claude or Codex desktop app it asks whether to add AI Bridge to that app's configuration (it saves a `.bak-aibridge` copy first).
 4. In FigJam open the AI Canvas plugin, turn on AI mode, add the sections you want to share. The plugin finds the program by itself. The **Copy context for AI** button gives you the text to paste into your AI chat.
 
 Uninstall: run `%LOCALAPPDATA%\AIBridge\ai-bridge.exe uninstall`, then delete the `AIBridge` folder. Remove the entry it added to the Claude or Codex configuration if you accepted it.
 
 ## Commands (what an AI tool runs)
-`status`, `boards`, `verify`, `send <ops.json | ->`, `autostart on|off|status`, `connect claude-desktop|codex|all|status`, `mcp` (used by desktop apps), `stop`, `serve [--background]`, `uninstall`. `verify` does a real read of the board and prints the file name, page, a four-letter board code and the chosen section, so the person can check the AI is on the right board.
+`status`, `boards`, `verify`, `send <ops.json | ->`, `autostart on|off|status`, `connect claude-desktop|codex|all|status`, `mcp` (used by desktop apps), `stop`, `restart [--all]`, `monitor [--no-window]`, `serve [--background]`, `uninstall`. `verify` does a real read of the board and prints the file name, page, a four-letter board code and the chosen section, so the person can check the AI is on the right board.
+
+## The monitor (status, restart, usage)
+`ai-bridge monitor` (or the Start menu entry "AI Bridge Monitor") opens a small window and a tray icon that show whether the bridge is working (green, grey or red), its port, the boards and agent connections, and the CPU and memory the AI Bridge programs use. **Restart AI Bridge** stops the bridge copies that hold its ports and starts one fresh copy, keeping the token. **Stop everything** also ends the agents' `ai-bridge mcp` connections. It only lists and stops programs started from its own install folder, never other programs. It serves its page only on `127.0.0.1` (ports 3060-3069), checks the Host and Origin of every request, and needs a per-run key for actions. Power use in watts is not shown: Windows does not report it per program.
 
 ## What is stored on your computer
 - `%LOCALAPPDATA%\AIBridge\`: the program, `bridge.json`, `instructions.md`, `exports\` (pictures an AI exports from the board), and a `last-error.txt` if the ports are all busy.
 - If you turn on "Start at sign-in": one entry in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
-- A Start menu shortcut.
+- Start menu shortcuts. Optionally (switches in the monitor): a sign-in entry for the monitor and a desktop icon. The monitor keeps `monitor.json` and `tray.ps1` in the same folder.
 
 ## What can go wrong (known limits, not fixed)
 - **Your AI tool sees what it reads.** Whatever the AI reads from your chosen section goes to whichever AI service that tool uses. This program does not control that. Choose the section deliberately.
@@ -59,6 +62,7 @@ The build was run twice on the author's machine and gave byte-identical files; o
 cd companion && npm install && node build.js
 node ../tests/companion.test.js
 node ../tests/companion2.test.js
+node ../tests/monitor.test.js
 ```
 They run the real program in an empty temporary folder with simulated plugins and check: install on a machine without Node on its PATH, token and origin checks, several boards, desktop-app (MCP) mode, the config helper on a fake profile, upgrade from an older version, and busy ports. They do **not** cover real Figma, real desktop apps, a clean virtual machine, or antivirus behaviour.
 
