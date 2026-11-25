@@ -28,6 +28,9 @@ Uninstall: run `%LOCALAPPDATA%\AIBridge\ai-bridge.exe uninstall`, then delete th
 ## Commands (what an AI tool runs)
 `status`, `boards`, `verify`, `send <ops.json | ->`, `autostart on|off|status`, `connect claude-desktop|codex|all|status`, `mcp` (used by desktop apps), `stop`, `restart [--all]`, `monitor [--no-window]`, `serve [--background]`, `uninstall`. `verify` does a real read of the board and prints the file name, page, a four-letter board code and the chosen section, so the person can check the AI is on the right board.
 
+## Drawing looks for the AI (gradients, mesh, tapered strokes, brushes, effects)
+The instructions an AI reads include the rich look fields for vector drawings (companion 1.5.0 with AI Canvas plugin 1.5.0). The same text is in [RICH-LOOK-OPERATIONS.md](RICH-LOOK-OPERATIONS.md).
+
 ## The monitor (status, restart, usage)
 `ai-bridge monitor` (or the Start menu entry "AI Bridge Monitor") opens a small window and a tray icon that show whether the bridge is working (green, grey or red), its port, the boards and agent connections, and the CPU and memory the AI Bridge programs use. **Restart AI Bridge** stops the bridge copies that hold its ports and starts one fresh copy, keeping the token. **Stop everything** also ends the agents' `ai-bridge mcp` connections. It only lists and stops programs started from its own install folder, never other programs. It serves its page only on `127.0.0.1` (ports 3060-3069), checks the Host and Origin of every request, and needs a per-run key for actions. Power use in watts is not shown: Windows does not report it per program.
 

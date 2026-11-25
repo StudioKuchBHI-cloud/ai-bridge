@@ -11,7 +11,7 @@ const http = require('http');
 const cp = require('child_process');
 const crypto = require('crypto');
 
-const VERSION = '1.4.1';
+const VERSION = '1.5.0';
 const PROTOCOL = 2;
 const PORTS = process.env.AIBRIDGE_PORTS ? process.env.AIBRIDGE_PORTS.split(',').map(Number).filter(Boolean) : [3055, 3056, 3057, 3058];
 const WIN = process.platform === 'win32';
@@ -173,6 +173,17 @@ These draw real vectors, the same kind a person draws with the pen and shapes in
 | \`pp.restyle\` | \`ids\` plus the style fields | restyles several shapes at once |
 | \`pp.read\` | \`id\` or \`parent\`, \`limit\` | the saved drawing (points, handles, style) of one vector, or of every vector in a section, including hand drawings you may not change |
 Style fields: \`stroke\` (hex), \`width\` (1 to 100), \`style\` (solid, dashed, dotted), \`dash\`, \`gap\`, \`fill\` (hex, or \`"none"\`), \`fillOpacity\` (0 to 100), \`strokeOpacity\` (0 to 100). Anything you leave out keeps its value (new shapes start as a 4 px solid blue line with no fill).
+
+Rich look (every \`pp.shape\`, \`pp.path\` and \`pp.restyle\` also takes \`rich\`). Gradients, a tapered stroke, brushes and effects, saved next to the drawing so a person editing its points never loses them. Send only the parts you want to change; a part set to \`null\` goes back to the plain style; \`rich: null\` removes the whole look. A refused look draws nothing.
+| Part | Value | Notes |
+|---|---|---|
+| \`stroke\`, \`fill\` | \`{type: "linear", colors: ["#ff0000","#0000ff"], angle: 90}\`, or \`type\` radial, angular, diamond (with \`cx\`, \`cy\`, \`r\` as 0 to 1 of the shape), or \`stops: [{pos, color, opacity}]\` instead of \`colors\` (2 to 8) | a gradient instead of the solid colour. Angle 0 runs left to right, 90 top to bottom |
+| \`fill\` as spots | \`{type: "spots", base: "#101018", spots: [{x, y, r, color, opacity}]}\` | up to 8 soft colour spots (x, y, r as 0 to 1 of the shape, r about 0.3 to 0.6) fading to transparent: a freeform-gradient look |
+| \`fill\` as mesh | \`{type: "mesh", cols: 3, rows: 3, colors: [9 hex colours, row by row, top left first], smooth: 1}\` | a grid of colour points (2 to 6 each way) blended smoothly, like a gradient mesh. FigJam has no native mesh, so it becomes a picture used as the fill (not a live vector); it is drawn again whenever the shape is edited. Fill only. \`smooth\` 0 to 1 eases the blend between points. For a living, editable alternative use spots |
+| \`profile\` | \`"TAPER"\`, \`"WEDGE"\`, \`"QUARTER_TAPER"\`, \`"EYE"\`, \`"MIRRORED_TAPER"\`, \`"UNIFORM"\`, or \`{points: [{position: 0..1, width: 0..1}]}\` | the stroke gets thick and thin along its length; width is a fraction of \`width\`. Use a wide \`width\` (10 to 40) so the effect shows. Open paths only taper at their ends |
+| \`brush\` | \`{type: "STRETCH", name: "NOIR"}\` (names: HEIST, BLOCKBUSTER, GRINDHOUSE, BIOPIC, SPAGHETTI_WESTERN, SLASHER, HARDBOILED, VERITE, EPIC, SCREWBALL, ROM_COM, NOIR, PROPAGANDA, MELODRAMA, NEW_WAVE), \`{type: "SCATTER", name: "BUBBLEGUM", gap, wiggle, sizeJitter, angularJitter, rotation}\` (BUBBLEGUM, WITCH_HOUSE, SHOEGAZE, HONKY_TONK, SCREAMO, DRONE, DOO_WOP, SPOKEN_WORD, VAPORWAVE, OI), or \`{type: "DYNAMIC", frequency, wiggle, smoothen}\` | a textured, scattered or wobbly stroke. A brush replaces a profile (you get a warning). Needs a stroke width of about 8 or more to be visible |
+| \`effects\` | \`{noise: {size, density, opacity}, texture: {size, radius}, progressiveBlur: {radius, start}, blur, shadow: {x, y, blur, color, opacity}}\` | grain, a rough texture, a blur that grows from top to bottom (replaces plain \`blur\`), a drop shadow |
+\`pp.read\` returns the saved look as \`rich\`. Example: \`{"op":"pp.path","points":[...],"width":18,"stroke":"#222222","rich":{"profile":"TAPER","stroke":{"type":"linear","colors":["#ff5a36","#3b6fd4"],"angle":0}}}\`.
 
 ### Change and arrange
 | op | Fields | Notes |

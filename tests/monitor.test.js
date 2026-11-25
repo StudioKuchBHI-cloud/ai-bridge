@@ -34,7 +34,7 @@ const blockerServer = () => net.createServer((sock) => { sock.on('error', () => 
   let mj = null; for (let i = 0; i < 40 && !mj; i++) { await sleep(250); try { mj = JSON.parse(fs.readFileSync(path.join(HOME, 'monitor.json'), 'utf8')); } catch (e) {} }
   assert(mj && mj.port >= 3060 && mj.port <= 3069, 'monitor.json'); const MP = mj.port; step('monitor opens one local page on a port in 3060-3069');
   let s = (await req(MP, 'GET', '/api/status')).json;
-  assert(s.state === 'running' && s.bridge.port === oldReg.port && s.bridge.version === '1.4.1', JSON.stringify(s).slice(0, 300));
+  assert(s.state === 'running' && s.bridge.port === oldReg.port && s.bridge.version === '1.5.0', JSON.stringify(s).slice(0, 300));
   assert(s.procs.some(p => p.role === 'bridge' && p.pid === oldReg.pid) && s.procs.some(p => p.role === 'monitor') && s.totals.mb > 0 && Array.isArray(s.history)); step('status: running, port and version, the bridge and the monitor are listed with memory, history is kept');
   const again = await sh(INST, ['monitor', '--no-window']); assert(/already running/.test(again.out)); step('starting the monitor twice keeps one copy');
 
